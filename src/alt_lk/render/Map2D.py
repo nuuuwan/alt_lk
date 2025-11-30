@@ -75,4 +75,6 @@ class Map2D(AbstractPlot):
         ax.spines['bottom'].set_visible(False)
         ax.spines['left'].set_visible(False)
 
+        plt.title('Elevation Map of the Kelani River Basin', fontsize=32)
+
         log.debug("build_plot done!")
