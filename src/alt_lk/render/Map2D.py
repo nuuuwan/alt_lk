@@ -11,7 +11,7 @@ log = Log("Map2D")
 class Map2D(AbstractPlot):
     @property
     def cmap(self):
-        return "seismic"
+        return "turbo"
 
     def build_plot(self):
         log.debug("build_plot")
