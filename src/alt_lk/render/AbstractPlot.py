@@ -46,7 +46,7 @@ class AbstractPlot:
     def save_and_start(image_path: str):
         plt.savefig(image_path, dpi=AbstractPlot.DPI)
         log.info(f"Wrote {image_path}.")
-        os.startfile(image_path)
+        os.system(f'open "{image_path}"')
 
     def write(self, place: str, image_path: str, force: bool = False):
         if not force and os.path.exists(image_path):
