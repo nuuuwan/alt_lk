@@ -13,7 +13,7 @@ class AbstractPlot:
         self.alt = alt
         self.get_mapped_alt = get_mapped_alt
 
-    DPI = 150
+    DPI = 300
 
     def build_plot(self):
         raise NotImplementedError
