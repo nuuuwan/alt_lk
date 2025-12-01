@@ -16,7 +16,6 @@ proj = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
 
 class Map2D(AbstractPlot):
 
-
     def build_plot(self):
         log.debug("build_plot")
         alt = self.alt or Alt.get_matrix_subset(self.bbox)
@@ -33,7 +32,7 @@ class Map2D(AbstractPlot):
 
         x, y = proj.transform(lng_f, lat_f)
 
-        fig, ax = plt.subplots(figsize=(16,16))
+        fig, ax = plt.subplots(figsize=(16, 16))
 
         # underlying OSM map
         # bounds required: minx, miny, maxx, maxy in EPSG:3857
@@ -43,38 +42,43 @@ class Map2D(AbstractPlot):
         ax.set_ylim(ymin, ymax)
         cx.add_basemap(ax, source=cx.providers.CartoDB.Positron)
 
-
-        cmap = ListedColormap([
-            "#90daeeff",   
-            "#ff000088",   
-            "#ff880088",   
-            "#ffffff00",   
-        ])
-        bounds = [-100, 0.0000001,  5, 10, 100]
+        alpha = 0.5
+        cmap = ListedColormap(
+            [
+                (0, 1, 1, alpha),
+                (1, 0, 0, alpha),
+                (1, 0.5, 0, alpha),
+                (1, 1, 1, 0.0001),
+            ]
+        )
+        bounds = [-100, 0.0000001, 5, 10, 100]
         norm = BoundaryNorm(bounds, cmap.N)
-    
 
         # altitude overlay with transparency
         sc = ax.scatter(
             x,
             y,
             c=alt_f,
-            s=1,
+            s=15,
             cmap=cmap,
             norm=norm,
             marker="s",
-    
+            edgecolors="none",
         )
-        plt.colorbar(ax=ax, mappable=sc, label='Altitude (m)', fraction=0.036, pad=0.04)
+        plt.colorbar(
+            ax=ax,
+            mappable=sc,
+            label="Altitude (m)",
+        )
 
         # Remove box and axes labels
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['bottom'].set_visible(False)
-        ax.spines['left'].set_visible(False)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+        ax.spines["left"].set_visible(False)
 
-        plt.title('Elevation Map of the Kelani River Basin', fontsize=32)
+        plt.title("Elevation Map of the Kelani River Basin", fontsize=32)
 
         log.debug("build_plot done!")
