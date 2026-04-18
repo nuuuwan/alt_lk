@@ -50,11 +50,10 @@ def _polygon_to_3d_faces(poly: Polygon, z_top: float):
     return faces
 
 
-def main():
+def main(parent_ent_type):
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection="3d", computed_zorder=False)
 
-    parent_ent_type = EntType.DISTRICT
     child_ent_type = EntType.GND
 
     parent_ents = Ent.list_from_type(parent_ent_type)
@@ -86,7 +85,9 @@ def main():
     # Rank-based coloring: assign each district a rank 0..1 by altitude
     n = len(alt_values)
     sorted_alts = sorted(set(alt_values))
-    rank_map = {v: i / (len(sorted_alts) - 1) for i, v in enumerate(sorted_alts)}
+    rank_map = {
+        v: i / (len(sorted_alts) - 1) for i, v in enumerate(sorted_alts)
+    }
     norm = lambda v: rank_map[v]  # noqa: E731
     cmap = LinearSegmentedColormap.from_list(
         "altitude_green", ["#f0f7f0", "#004d00"]
@@ -229,7 +230,10 @@ def main():
     # Footer centred at bottom
     fw = draw.textlength(footer, font=font_footer)
     draw.text(
-        ((new_img.width - fw) / 2, img.height + padding + (padding - line_h) // 2),
+        (
+            (new_img.width - fw) / 2,
+            img.height + padding + (padding - line_h) // 2,
+        ),
         footer,
         font=font_footer,
         fill=(130, 130, 130),
@@ -240,4 +244,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    for parent_ent_type in [EntType.PROVINCE, EntType.DISTRICT, EntType.DSD]:
+        main(parent_ent_type)
