@@ -90,7 +90,7 @@ def main(parent_ent_type):
     }
     norm = lambda v: rank_map[v]  # noqa: E731
     cmap = LinearSegmentedColormap.from_list(
-        "altitude_green", ["#f0f7f0", "#004d00"]
+        "altitude_gyr", ["green", "yellow", "red"]
     )
 
     # With computed_zorder=False, artists render in addition order.
@@ -123,7 +123,34 @@ def main(parent_ent_type):
 
     # Pass 2: draw labels with high zorder — with computed_zorder=False
     # these always render on top of all Poly3DCollection geometry.
-    for ent, alt, poly, color, z_top in ent_poly_data:
+    MAX_LABELS = 30
+    label_data = ent_poly_data
+    if len(label_data) > MAX_LABELS:
+        # Greedy farthest-point selection for geographic spread.
+        # Start with the entry whose centroid is most extreme (lowest lat),
+        # then repeatedly pick the candidate farthest from all already-selected
+        # centroids (Euclidean in lon/lat space).
+        candidates = list(label_data)
+        centroids = [(item[2].centroid.x, item[2].centroid.y) for item in candidates]
+
+        def _min_dist_to_selected(idx, selected_idxs):
+            cx, cy = centroids[idx]
+            return min(
+                (cx - centroids[s][0]) ** 2 + (cy - centroids[s][1]) ** 2
+                for s in selected_idxs
+            )
+
+        # seed: pick the item with the lowest centroid latitude
+        seed = min(range(len(candidates)), key=lambda i: centroids[i][1])
+        selected_idxs = [seed]
+        while len(selected_idxs) < MAX_LABELS:
+            next_idx = max(
+                (i for i in range(len(candidates)) if i not in selected_idxs),
+                key=lambda i: _min_dist_to_selected(i, selected_idxs),
+            )
+            selected_idxs.append(next_idx)
+        label_data = [candidates[i] for i in selected_idxs]
+    for ent, alt, poly, color, z_top in label_data:
         centroid = poly.centroid
         ax.text(
             centroid.x,
@@ -183,7 +210,7 @@ def main(parent_ent_type):
     diff = ImageChops.difference(img, bg)
     bbox = diff.getbbox()
     if bbox:
-        margin = 20
+        margin = 80
         w, h = img.size
         bbox = (
             max(0, bbox[0] - margin),
@@ -202,14 +229,15 @@ def main(parent_ent_type):
     )
     footer = "Data: USGS 1 arc-second DEM · github.com/nuuuwan/alt_lk"
 
-    padding = 48
+    padding = 64
+    h_padding = 60
     line_h = 30
     new_img = Image.new(
         "RGB",
-        (img.width, img.height + padding * 2),
+        (img.width + h_padding * 2, img.height + padding * 2),
         (255, 255, 255),
     )
-    new_img.paste(img, (0, padding))
+    new_img.paste(img, (h_padding, padding))
 
     draw = ImageDraw.Draw(new_img)
     try:
