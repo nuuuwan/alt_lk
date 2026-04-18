@@ -74,14 +74,13 @@ TEST_DATA_LIST = [
 class TestCase(unittest.TestCase):
     def test_alt(self):
         for d in TEST_DATA_LIST:
-            name = d['name']
-            latlng = d['latlng']
-            expected_alt = d['expected_alt']
+            name = d["name"]
+            latlng = d["latlng"]
+            expected_alt = d["expected_alt"]
             computed_alt = Alt.from_latlng(latlng)
-            s = f'{name} ({latlng}): {computed_alt}'
-            print(s)
+            s = f"{name} ({latlng}): {computed_alt}"
             self.assertEqual(
                 expected_alt,
                 computed_alt,
-                f'{s} != {expected_alt}',
+                f"{s} != {expected_alt}",
             )
