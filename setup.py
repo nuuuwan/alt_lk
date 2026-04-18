@@ -2,15 +2,16 @@
 
 import setuptools
 
-DIST_NAME = 'alt_lk'
-VERSION = "1.1.0"
+DIST_NAME = "alt_lk"
+VERSION = "2.0.0"
+VERSION_DATE = "2025-04-18"
 DESCRIPTION = "Altitude information for Sri Lanka"
 INSTALL_REQUIRES = [
-    'matplotlib',
-    'numpy',
-    'rasterio',
-    'scipy',
-    'utils-nuuuwan',
+    "matplotlib",
+    "numpy",
+    "rasterio",
+    "scipy",
+    "utils-nuuuwan",
 ]
 setuptools.setup(
     name="%s-nuuuwan" % DIST_NAME,
@@ -33,6 +34,6 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.10",
     install_requires=INSTALL_REQUIRES,
-    test_suite='nose.collector',
-    tests_require=['nose'],
+    test_suite="nose.collector",
+    tests_require=["nose"],
 )
