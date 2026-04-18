@@ -2,8 +2,10 @@ import os
 
 import matplotlib.pyplot as plt
 from gig import Ent, EntType
-from matplotlib import cm
+from matplotlib import rcParams
 from matplotlib.colors import LinearSegmentedColormap, Normalize
+
+rcParams["font.family"] = "Menlo"
 
 from alt_lk import Alt, LatLng
 
@@ -91,11 +93,6 @@ def main():
             },
         )
 
-    sm = cm.ScalarMappable(norm=norm, cmap=cmap)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=ax)
-    cbar.set_label("Altitude (m)")
-
     ax.set_title(
         f"{parent_ent_type.name.capitalize()}s of Sri Lanka by Average Elevation"
     )
@@ -104,12 +101,24 @@ def main():
     ax.set_yticks([])
     ax.set_xlabel("")
     ax.set_ylabel("")
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    fig.text(
+        0.5,
+        0.01,
+        "Data: USGS 1 arc-second DEM · github.com/nuuuwan/alt_lk",
+        ha="center",
+        va="bottom",
+        fontsize=7,
+        color="grey",
+    )
 
     image_path = os.path.join(
         "examples",
         f"average_altitude_{parent_ent_type.name}_{child_ent_type.name}.png",
     )
-    plt.tight_layout()
+    fig.subplots_adjust(bottom=0.03)
     plt.savefig(image_path, dpi=300)
     plt.close(fig)
     print(f'Wrote "{image_path}"')
