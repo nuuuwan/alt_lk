@@ -1,17 +1,59 @@
 import os
 
+import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
+import numpy as np
 from gig import Ent, EntType
 from matplotlib import rcParams
-from matplotlib.colors import LinearSegmentedColormap, Normalize
+from matplotlib.colors import LinearSegmentedColormap, to_rgb
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from PIL import Image, ImageChops
+from shapely.geometry import MultiPolygon, Polygon
 
 rcParams["font.family"] = "Menlo"
 
 from alt_lk import Alt, LatLng
 
+# Scale factor: converts metres to the same unit as lat/lng degrees
+# so the 3D extrusion looks proportional
+ALT_SCALE = 0.000005
+
+
+def _biggest_polygon(geo) -> Polygon:
+    geometry = geo.geometry
+    merged = (
+        geometry.union_all()
+        if hasattr(geometry, "union_all")
+        else geometry.unary_union
+    )
+    if isinstance(merged, MultiPolygon):
+        return max(merged.geoms, key=lambda p: p.area)
+    return merged
+
+
+def _polygon_to_3d_faces(poly: Polygon, z_top: float):
+    """Return the top face and side walls of an extruded polygon as lists of
+    vertex arrays suitable for Poly3DCollection."""
+    coords = list(poly.exterior.coords)
+    # top face
+    top = [(x, y, z_top) for x, y in coords]
+    faces = [top]
+    # side walls
+    for (x0, y0), (x1, y1) in zip(coords[:-1], coords[1:]):
+        wall = [
+            (x0, y0, 0),
+            (x1, y1, 0),
+            (x1, y1, z_top),
+            (x0, y0, z_top),
+        ]
+        faces.append(wall)
+    return faces
+
 
 def main():
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection="3d", computed_zorder=False)
+
     parent_ent_type = EntType.DISTRICT
     child_ent_type = EntType.GND
 
@@ -41,86 +83,159 @@ def main():
         parent_ent_and_alt.append((parent_ent, alt_avg))
 
     alt_values = [alt for _, alt in parent_ent_and_alt]
-    norm = Normalize(vmin=min(alt_values), vmax=max(alt_values))
+    # Rank-based coloring: assign each district a rank 0..1 by altitude
+    n = len(alt_values)
+    sorted_alts = sorted(set(alt_values))
+    rank_map = {v: i / (len(sorted_alts) - 1) for i, v in enumerate(sorted_alts)}
+    norm = lambda v: rank_map[v]  # noqa: E731
     cmap = LinearSegmentedColormap.from_list(
-        "altitude_gor", ["green", "orange", "red"]
+        "altitude_green", ["#f0f7f0", "#004d00"]
     )
 
+    # With computed_zorder=False, artists render in addition order.
+    # Draw shortest districts first so tall highland prisms end up on top.
+    parent_ent_and_alt.sort(key=lambda x: x[1], reverse=False)
+
+    # Pre-compute polygons and centroids
+    ent_poly_data = []
     for ent, alt in parent_ent_and_alt:
         geo = ent.geo()
-        geo.plot(
-            ax=ax,
-            facecolor=cmap(norm(alt)),
-            edgecolor="black",
+        color = cmap(norm(alt))
+        z_top = alt * ALT_SCALE
+        poly = _biggest_polygon(geo)
+        ent_poly_data.append((ent, alt, poly, color, z_top))
+
+    # Pass 1: draw all polygons
+    for ent, alt, poly, color, z_top in ent_poly_data:
+        faces = _polygon_to_3d_faces(poly, z_top)
+        r, g, b = to_rgb(color)
+        dark_edge = (r * 0.5, g * 0.5, b * 0.5)
+        collection = Poly3DCollection(
+            faces,
+            facecolor=color,
+            edgecolor=dark_edge,
+            linewidth=0.3,
+            alpha=0.9,
+            zorder=1,
         )
+        ax.add_collection3d(collection)
 
-        label_x = float(ent.center_lon)
-        label_y = float(ent.center_lat)
-        try:
-            from shapely.geometry import MultiPolygon, Polygon
-
-            geometry = geo.geometry
-            merged = (
-                geometry.union_all()
-                if hasattr(geometry, "union_all")
-                else geometry.unary_union
-            )
-            if isinstance(merged, MultiPolygon):
-                biggest = max(merged.geoms, key=lambda p: p.area)
-            elif isinstance(merged, Polygon):
-                biggest = merged
-            else:
-                biggest = merged
-            centroid = biggest.centroid
-            label_x, label_y = centroid.x, centroid.y
-        except Exception:
-            pass
-
+    # Pass 2: draw labels with high zorder — with computed_zorder=False
+    # these always render on top of all Poly3DCollection geometry.
+    for ent, alt, poly, color, z_top in ent_poly_data:
+        centroid = poly.centroid
         ax.text(
-            label_x,
-            label_y,
+            centroid.x,
+            centroid.y,
+            z_top,
             f"{ent.name}\n{alt:,.0f} m",
             ha="center",
-            va="center",
-            fontsize=6,
-            color="black",
-            zorder=5,
-            bbox={
-                "boxstyle": "round,pad=0.3",
-                "facecolor": "white",
-                "edgecolor": "none",
-                "alpha": 0.7,
-            },
+            va="bottom",
+            fontsize=5,
+            color="white",
+            zorder=10,
+            path_effects=[pe.withStroke(linewidth=1.5, foreground="black")],
         )
 
-    ax.set_title(
-        f"{parent_ent_type.name.capitalize()}s of Sri Lanka by Average Elevation"
+    # fit axes to data
+    all_coords = np.array(
+        [
+            (float(e.center_lon), float(e.center_lat))
+            for e, _ in parent_ent_and_alt
+        ]
     )
-    ax.set_aspect("equal")
+    ax.set_xlim(all_coords[:, 0].min() - 0.2, all_coords[:, 0].max() + 0.2)
+    ax.set_ylim(all_coords[:, 1].min() - 0.2, all_coords[:, 1].max() + 0.2)
+    ax.set_zlim(0, max(alt_values) * ALT_SCALE * 1.1)
+
     ax.set_xticks([])
     ax.set_yticks([])
+    ax.set_zticks([])
     ax.set_xlabel("")
     ax.set_ylabel("")
-    for spine in ax.spines.values():
-        spine.set_visible(False)
-
-    fig.text(
-        0.5,
-        0.01,
-        "Data: USGS 1 arc-second DEM · github.com/nuuuwan/alt_lk",
-        ha="center",
-        va="bottom",
-        fontsize=7,
-        color="grey",
+    ax.set_zlabel("")
+    ax.view_init(elev=40, azim=-80)
+    ax.set_box_aspect([1, 2, 0.06])
+    ax.dist = (
+        6  # default is 10; lower = less internal padding around the scene
     )
+    ax.set_position([-0.2, -0.05, 1.4, 1.05])
+
+    # remove outer box, panes and grid
+    ax.set_axis_off()
+    for pane in (ax.xaxis.pane, ax.yaxis.pane, ax.zaxis.pane):
+        pane.fill = False
+        pane.set_edgecolor("none")
+    ax.grid(False)
 
     image_path = os.path.join(
         "examples",
         f"average_altitude_{parent_ent_type.name}_{child_ent_type.name}.png",
     )
-    fig.subplots_adjust(bottom=0.03)
+    fig.subplots_adjust(top=1.0, bottom=0.0)
     plt.savefig(image_path, dpi=300)
     plt.close(fig)
+
+    # Crop whitespace that the 3D renderer adds internally
+    img = Image.open(image_path).convert("RGB")
+    bg = Image.new("RGB", img.size, (255, 255, 255))
+    diff = ImageChops.difference(img, bg)
+    bbox = diff.getbbox()
+    if bbox:
+        margin = 20
+        w, h = img.size
+        bbox = (
+            max(0, bbox[0] - margin),
+            max(0, bbox[1] - margin),
+            min(w, bbox[2] + margin),
+            min(h, bbox[3] + margin),
+        )
+        img = img.crop(bbox)
+
+    # Add title and footer as PIL text so they don't affect 3D layout
+    from PIL import ImageDraw, ImageFont
+
+    title = (
+        f"{parent_ent_type.name.capitalize()}s of Sri Lanka"
+        " – Average Elevation"
+    )
+    footer = "Data: USGS 1 arc-second DEM · github.com/nuuuwan/alt_lk"
+
+    padding = 48
+    line_h = 30
+    new_img = Image.new(
+        "RGB",
+        (img.width, img.height + padding * 2),
+        (255, 255, 255),
+    )
+    new_img.paste(img, (0, padding))
+
+    draw = ImageDraw.Draw(new_img)
+    try:
+        font_title = ImageFont.truetype("/System/Library/Fonts/Menlo.ttc", 32)
+        font_footer = ImageFont.truetype("/System/Library/Fonts/Menlo.ttc", 22)
+    except Exception:
+        font_title = ImageFont.load_default()
+        font_footer = font_title
+
+    # Title centred at top
+    tw = draw.textlength(title, font=font_title)
+    draw.text(
+        ((new_img.width - tw) / 2, (padding - line_h) // 2),
+        title,
+        font=font_title,
+        fill=(40, 40, 40),
+    )
+    # Footer centred at bottom
+    fw = draw.textlength(footer, font=font_footer)
+    draw.text(
+        ((new_img.width - fw) / 2, img.height + padding + (padding - line_h) // 2),
+        footer,
+        font=font_footer,
+        fill=(130, 130, 130),
+    )
+
+    new_img.save(image_path)
     print(f'Wrote "{image_path}"')
 
 
