@@ -51,7 +51,6 @@ for alt in alts:
 
 ```
 
-
 ## Data
 
 This library uses **1 arc-second Digital Elevation Models (DEMs)** from the [United States Geological Survey](https://earthexplorer.usgs.gov/).
@@ -65,3 +64,11 @@ DEM is a 3D representation of a terrain's surface created from terrain elevation
 ### 1 arc-second
 
 This refers to the spatial resolution of the DEM. One arc-second is 1/3600th of a degree of latitude or longitude. Therefore, a one arc-second resolution means each pixel or grid cell in the DEM represents a square of the Earth's surface that is one arc-second by one arc-second in size. This roughly translates to about 30 meters by 30 meters at the equator, although the actual ground distance covered by one arc-second varies slightly with latitude due to the Earth's curvature. Thus, an area one latitude by one longitude, is represented by a grid of 3601 by 3601 cells.
+
+## Examples
+
+### [average_altitude.py](examples/average_altitude.py)
+
+Districts of Sri Lanka colored by area-weighted average altitude, computed from GND (Grama Niladhari Division) center points. Each district polygon is filled on a green → orange → red scale, with a label showing the district name and its average elevation in metres.
+
+![Districts of Sri Lanka by Average Elevation](examples/average_altitude_district_gnd.png)
