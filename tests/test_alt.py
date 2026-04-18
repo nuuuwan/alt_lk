@@ -84,3 +84,27 @@ class TestCase(unittest.TestCase):
                 computed_alt,
                 f"{s} != {expected_alt}",
             )
+
+    def test_readme_example_single_point(self):
+        latlng_sri_paada = LatLng(6.809498226498262, 80.49925188865949)
+        alt = Alt.from_latlng(latlng_sri_paada)
+
+        self.assertEqual(Alt(2193), alt)
+        self.assertEqual(2193.0, alt.alt_m)
+        self.assertAlmostEqual(7194.88212, alt.alt_ft, places=5)
+        self.assertEqual("2,193m / 7,195ft", str(alt))
+
+    def test_readme_example_list_query(self):
+        latlng_piduruthalagala = LatLng(lat=7.001665, lng=80.772689)
+        latlng_kirigalpotta = LatLng(lat=6.813, lng=80.783)
+        latlng_thotapola = LatLng(lat=6.833, lng=80.82)
+
+        alts = Alt.list_from_latlng_list(
+            [
+                latlng_piduruthalagala,
+                latlng_kirigalpotta,
+                latlng_thotapola,
+            ]
+        )
+
+        self.assertEqual([2513, 2292, 2351], [alt.alt_m for alt in alts])
