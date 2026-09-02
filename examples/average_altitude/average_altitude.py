@@ -131,7 +131,9 @@ def main(parent_ent_type):
         # then repeatedly pick the candidate farthest from all already-selected
         # centroids (Euclidean in lon/lat space).
         candidates = list(label_data)
-        centroids = [(item[2].centroid.x, item[2].centroid.y) for item in candidates]
+        centroids = [
+            (item[2].centroid.x, item[2].centroid.y) for item in candidates
+        ]
 
         def _min_dist_to_selected(idx, selected_idxs):
             cx, cy = centroids[idx]
