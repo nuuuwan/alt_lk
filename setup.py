@@ -7,6 +7,7 @@ VERSION = "2.0.0"
 VERSION_DATE = "2025-04-18"
 DESCRIPTION = "Altitude information for Sri Lanka"
 INSTALL_REQUIRES = [
+    "adjustText",
     "matplotlib",
     "numpy",
     "rasterio",
